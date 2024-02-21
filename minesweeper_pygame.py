@@ -1,5 +1,4 @@
 import random
-
 import numpy as np
 import pygame
 import mss
@@ -201,7 +200,7 @@ class Minesweeper(object):
         """
         if self.game_field[row][col] == "B":
             self.lost += 1
-            print("Won " + str(self.won) + " Lost " + str(self.lost))
+            print("Win " + str(self.won) + " Lost " + str(self.lost))
             self.initGame()
             return {"s": self.state_field, "r": -1}
 
@@ -211,7 +210,7 @@ class Minesweeper(object):
 
         if np.sum(self.state_field == "P") == self.MINES:
             self.won += 1
-            print("Won " + str(self.won) + " Lost " + str(self.lost))
+            print("Win " + str(self.won) + " Lost " + str(self.lost))
             self.initGame()
             return {"s": self.state_field, "r": 1}
 
