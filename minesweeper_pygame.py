@@ -156,6 +156,7 @@ class Minesweeper(object):
     def open_tile(self, row, col, type="open"):
         """
         Find out which values to show in the state when a square is pressed
+        :param isEmpty:
         :param row:
         :param col:
         :param type: open / flag
@@ -168,7 +169,9 @@ class Minesweeper(object):
                 if self.display:
                     self.draw(row, col, self.game_field[row][col])
 
-                self.open_continuity(row, col)
+                if self.state_field[row][col] == 0:
+                    self.open_continuity(row, col)
+
         elif type == "flag":
             self.state_field[row][col] = "P"
 
@@ -176,6 +179,7 @@ class Minesweeper(object):
                 self.draw(row, col, "flag")
 
     def open_continuity(self, current_row, current_col):
+        print("continuity")
         """
         A function that opens tiles in succession
         :param current_row:
@@ -186,9 +190,9 @@ class Minesweeper(object):
             for col in range(current_col - 1, current_col + 2):
                 if (row < 0 or row >= self.ROWS) or (col < 0 or col >= self.COLS):
                     continue
-                if (self.game_field[row][col] != "0") or self.state_field[row][col] != '▮':
-                    continue
 
+                if self.state_field[row][col] != '▮' or not (0 <= self.game_field[row][col] <= 8):
+                    continue
                 self.open_tile(row, col)
 
     def action(self, row, col):
@@ -217,24 +221,16 @@ class Minesweeper(object):
         reward = self.compute_reward()
         return {"s": self.state_field, "r": reward}
 
-    def draw(self, row, col, type):
-        # if type == "flag":
-        #     self.screen.blit(self.tile_dict[-3], (self.TILE_ROW * row, self.TILE_COL * col))
-        # elif type == "boom":
-        #     self.screen.blit(self.tile_dict[-2], (self.TILE_ROW * row, self.TILE_COL * col))
-        # else:
-        #     self.screen.blit(self.tile_dict[type], (self.TILE_ROW * row, self.TILE_COL * col))
-        for r in range(0, self.ROWS):
-            for c in range(0, self.COLS):
-                type = self.state_field[r][c]
+    def draw(self, r, c, type):
+        type = self.state_field[r][c]
 
-                if type == "P":
-                    self.screen.blit(self.tile_dict[-3], (self.TILE_ROW * r, self.TILE_COL * c))
-                elif type == "▮":
-                    self.screen.blit(self.tile_dict[9], (self.TILE_ROW * r, self.TILE_COL * c))
-                else:
-                    self.screen.blit(self.tile_dict[type], (self.TILE_ROW * r, self.TILE_COL * c))
-        pygame.display.flip()
+        if type == "P":
+            self.screen.blit(self.tile_dict[-3], (self.TILE_ROW * c, self.TILE_COL * r))
+        elif type == "▮":
+            self.screen.blit(self.tile_dict[9], (self.TILE_ROW * c, self.TILE_COL * r))
+        else:
+            self.screen.blit(self.tile_dict[type], (self.TILE_ROW * c, self.TILE_COL * r))
+        pygame.display.update()
 
     def compute_reward(self):
         """
@@ -273,7 +269,7 @@ class Minesweeper(object):
 
 
 if __name__ == "__main__":
-    game = Minesweeper(display=False)
+    game = Minesweeper(display=True)
 
     game.printBoard()
     game.printState()
