@@ -9,121 +9,128 @@ import numpy as np
  0 ~ 8 : 해당 타일을 기준으로 3 x 3 구역에서 존재하는 지뢰의 갯수
  P : Flag , 깃발
 """
+
+
 class Minesweeper(object):
     def __init__(self, ROWS=9, COLUMNS=9, MINES=10, GUI=False):
         self.ROWS = ROWS
         self.COLUMNS = COLUMNS
         self.MINES_COUNT = MINES
-        self.BOARD_FIELD = self.init_board()  # 게임의 데이터 ( 지뢰의 위치, 근처의 지뢰 수 등 ) 을 저장하는 2차원 배열
-        self.PLAYER_FIELD = self.init_game()  # 사용자에게 보여지는 화면을 저장하는 2차원 배열
-        self.MOVE_COUNT = 0  # 사용자가 상호작용한 횟수
-        
+        self.GRID = self.init_grid()  # 게임의 데이터 ( 지뢰의 위치, 근처의 지뢰 수 등 ) 을 저장하는 2차원 배열
+        self.PLAYER_FIELD = self.init_field()  # 사용자에게 보여지는 화면을 저장하는 2차원 배열
+        self.DONE = False
+
+        self.move_count = 0  # 사용자가 상호작용한 횟수
         self.won = 0  # 사용자가 게임에서 이긴 횟수
         self.lost = 0  # 사용자가 게임에서 진 횟수
 
-    def init_board(self):
-        """ 게임의 데이터를 저장하는 2차원 배열을 생성 후 초기화하여 리턴 """
-        board = np.zeros((self.ROWS, self.COLUMNS), dtype=object)  # 데이터를 저장할 2차원 배열
-        mines = self.MINES_COUNT  # 설치할 지뢰의 수
+    def init_grid(self):
+        """ 게임의 데이터를 저장하는 2차원 배열을 초기화하는 함수 """
+        grid = np.zeros((self.ROWS, self.COLUMNS), dtype=object)
+        mines = self.MINES_COUNT
 
         while mines > 0:
-            mine_row, mine_col = random.randint(0, self.ROWS - 1), random.randint(0, self.COLUMNS - 1)
-            if board[mine_row][mine_col] != 'B':  # 지뢰의 위치가 중복되지 않은 경우에만 지뢰의 위치 저장
-                board[mine_row][mine_col] = 'B'
-                board = self.set_neighbors(mine_row, mine_col, board)
+            row, col = random.randint(0, self.ROWS - 1), random.randint(0, self.COLUMNS - 1)
+
+            if grid[row][col] != 'B':
+                grid[row][col] = 'B'
+                grid = self.add_neighbors(row, col, grid)
                 mines -= 1
 
+        return grid
+
+    def add_neighbors(self, current_row, current_col, grid):
+        """ 2차원 배열에서 지뢰 주변의 3 x 3 그리드의 값을 1씩 더해주는 함수 """
+        for row in range(current_row - 1, current_row + 2):
+            for col in range(current_col - 1, current_col + 2):
+                if 0 <= row < self.ROWS and 0 <= col < self.COLUMNS and grid[row][col] != "B":
+                    grid[row][col] += 1
+
+        return grid
+
+    def init_field(self):
+        """ 사용자에게 보여지는 2차원 배열을 초기화하는 함수 """
+        board = np.full((self.ROWS, self.COLUMNS), "U", dtype=object)
         return board
 
-    def init_game(self):
-        """ 사용자에게 보여지는 화면을 저장하는 2차우너 배열을 생성 후 초기화하여 리턴 """
-        player_board = np.full((self.ROWS, self.COLUMNS),"U", dtype=object)
+    def auto_reveal(self, current_row, current_col, player_field):
+        for row in range(current_row - 1, current_row + 2):
+            for col in range(current_col - 1, current_col + 2):
+                if 0 <= row < self.ROWS and 0 <= col < self.COLUMNS:
+                    pos = row * len(self.PLAYER_FIELD) + col
+                    if self.GRID[row, col] != "B" and player_field[pos] == 'U':
+                        player_field[pos] = self.GRID[row, col]
 
-        return player_board
+                        if player_field[pos] == 0:
+                            player_field = self.auto_reveal(row, col, player_field)
 
-    def set_neighbors(self, mine_row, mine_col, board):
-        """ 지뢰가 설치된 위치를 중심으로 3 x 3 구역에 1을 더하여 리턴 """
-        for row in range(mine_row - 1, mine_row + 2):
-            for col in range(mine_col - 1, mine_col + 2):
-                if 0 <= row < self.ROWS and 0 <= col < self.COLUMNS and board[row][col] != 'B':
-                    board[row][col] += 1
-
-        return board
+        return player_field
 
     def reset(self):
-        """ 게임이 끝났을 때 다음 게임을 위해 초기화 """
-        self.BOARD_FIELD = self.init_board()
-        self.PLAYER_FIELD = self.init_game()
-        self.MOVE_COUNT = 0
-        action = np.ravel_multi_index((0, 0), (self.ROWS, self.COLUMNS))
-        state = self.step(action)
-
-        return state
+        """ 게임의 상태를 초기화 시켜주는 함수 """
+        self.GRID = self.init_grid()
+        self.PLAYER_FIELD = self.init_field()
+        self.DONE = False
+        self.move_count = 0
 
     def step(self, action):
-        """ 사용자가 상호작용 시 실행되는 함수 """
-        flatten_board = self.BOARD_FIELD.flatten()  # 게임 데이터가 저장된 2차원 배열 평탄화
-        flatten_player_field = self.PLAYER_FIELD.flatten()  # 사용자에게 보여지는 2차원 배열 평탄화
-        count_hidden_tiles = np.count_nonzero(flatten_player_field == "U")  # 아직 제거되지 않은 타일을 수를 저장
-    
-        done = False
-        reward = None
+        action_pos = action[0] * len(self.PLAYER_FIELD) + action[1]
 
-        if flatten_board[action] == "B":
-            # 폭탄이 있는 타일을 제거하였을 때
+        flattened_player_field = self.PLAYER_FIELD.flatten()
+        flattened_grid = self.GRID.flatten()
+        flattened_player_field[action_pos] = flattened_grid[action_pos]
+
+        num_flag_tiles = np.count_nonzero(flattened_player_field == "P")
+
+        if flattened_player_field[action_pos] == "B":
+            """ 지뢰를 클릭했을 때 """
             done = True
             reward = -1
-            self.lost += 1
-        elif count_hidden_tiles == self.MINES_COUNT:
-            # 남아있는 제거되지 않은 타일의 개수가 지뢰의 갯수와 같을 때
+        elif num_flag_tiles == self.MINES_COUNT:
+            """ 깃발의 개수와 지뢰의 갯수가 같을 때 """
             done = True
-            reward = 1
-            self.won += 1
-        elif flatten_player_field[action] == 0:
-            # 제거한 타일이 0일 때 연쇄적으로 주변 타일을 제거
-            flatten_player_field = self.reveal_continuity(action, self.PLAYER_FIELD)
+            reward = 1.0
+        elif flattened_player_field[action_pos] == 0:
+            flattened_player_field = self.auto_reveal(action[0], action[1], flattened_player_field)
+            num_flag_tiles = np.count_nonzero(flattened_player_field == "P")
 
-            count_hidden_tiles = np.count_nonzero(flatten_player_field == "U")
-            if count_hidden_tiles == self.MINES_COUNT:
+            if num_flag_tiles == self.MINES_COUNT:
                 done = True
-                reward = 1
-                self.won += 1
+                reward = 1.0
             else:
                 done = False
                 reward = 0.1
         else:
             done = False
             reward = 0.1
-        
-        # 변수 업데이트
-        player_field = flatten_player_field.reshape(self.ROWS, self.COLUMNS)
-        self.PLAYER_FIELD = player_field
-        self.MOVE_COUNT += 1
 
-        return player_field, reward, done
+        updated_player_field = flattened_player_field.reshape(self.ROWS, self.COLUMNS)
+        self.PLAYER_FIELD = updated_player_field
+        self.DONE = done
+        self.move_count += 1
 
-    def reveal_continuity(self, action, player_field):
-        """ 연쇄적으로 주변 타일을 제거하는 함수"""
-        x, y = np.unravel_index(action, (self.ROWS, self.COLUMNS))
-        update_field = player_field.copy()
+        return updated_player_field, reward, done
 
-        for k in range(-1, 2):
-            for h in range(-1, 2):
-                x += k
-                y += h
-
-                if 0 <= x < self.ROWS and 0 <= y < self.COLUMNS:
-                    if update_field[x, y] == "U" and self.BOARD_FIELD[x, y] != "B":
-                        update_field[x, y] = self.BOARD_FIELD[x, y]
-
-                        if self.BOARD_FIELD[x, y] == 0:
-                            update_field = self.reveal_continuity((x, y), update_field)
-
-        return update_field.flatten()
-
-    def print_player_field(self):
-        """ 플레이어가 현재 진행상황을 볼 수 있게 출력하는 함수 """
+    def print_field(self):
         for row in range(0, self.ROWS):
             for col in range(0, self.COLUMNS):
                 print(self.PLAYER_FIELD[row, col], end=" ")
-            print("")
+            print(" ")
+
+    def print_grid(self):
+        for row in range(0, self.ROWS):
+            for col in range(0, self.COLUMNS):
+                print(self.GRID[row, col], end=" ")
+            print(" ")
+
+
+if __name__ == "__main__":
+    game = Minesweeper(9, 9, 10)
+    game.print_grid()
+
+    while not game.DONE:
+        x = int(input('X축 입력 : '))
+        y = int(input('Y축 입력 : '))
+
+        game.step((x, y))
+        game.print_field()
