@@ -53,7 +53,8 @@ class Minesweeper(object):
         board = np.full((self.ROWS, self.COLUMNS), "U", dtype=object)
         return board
 
-    def auto_reveal(self, current_row, current_col, player_field):
+    def auto_reveal(self, action, player_field):
+        current_row, current_col = np.unravel_index(action, (self.ROWS, self.COLUMNS))
         for row in range(current_row - 1, current_row + 2):
             for col in range(current_col - 1, current_col + 2):
                 if 0 <= row < self.ROWS and 0 <= col < self.COLUMNS:
@@ -62,7 +63,8 @@ class Minesweeper(object):
                         player_field[pos] = self.GRID[row, col]
 
                         if player_field[pos] == 0:
-                            player_field = self.auto_reveal(row, col, player_field)
+                            action_idx = np.ravel_multi_index((row, col), (self.ROWS, self.COLUMNS))
+                            player_field = self.auto_reveal(action_idx, player_field)
 
         return player_field
 
@@ -74,15 +76,13 @@ class Minesweeper(object):
         self.move_count = 0
 
     def step(self, action):
-        action_pos = action[0] * len(self.PLAYER_FIELD) + action[1]
-
         flattened_player_field = self.PLAYER_FIELD.flatten()
         flattened_grid = self.GRID.flatten()
-        flattened_player_field[action_pos] = flattened_grid[action_pos]
+        flattened_player_field[action] = flattened_grid[action]
 
         num_flag_tiles = np.count_nonzero(flattened_player_field == "P")
 
-        if flattened_player_field[action_pos] == "B":
+        if flattened_player_field[action] == "B":
             """ 지뢰를 클릭했을 때 """
             done = True
             reward = -1
@@ -90,8 +90,8 @@ class Minesweeper(object):
             """ 깃발의 개수와 지뢰의 갯수가 같을 때 """
             done = True
             reward = 1.0
-        elif flattened_player_field[action_pos] == 0:
-            flattened_player_field = self.auto_reveal(action[0], action[1], flattened_player_field)
+        elif flattened_player_field[action] == 0:
+            flattened_player_field = self.auto_reveal(action, flattened_player_field)
             num_flag_tiles = np.count_nonzero(flattened_player_field == "P")
 
             if num_flag_tiles == self.MINES_COUNT:
@@ -132,5 +132,6 @@ if __name__ == "__main__":
         x = int(input('X축 입력 : '))
         y = int(input('Y축 입력 : '))
 
-        game.step((x, y))
+        action_idx = np.ravel_multi_index((x, y), (9, 9))
+        game.step(action_idx)
         game.print_field()

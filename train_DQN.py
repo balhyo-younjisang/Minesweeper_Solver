@@ -1,3 +1,5 @@
+import numpy as np
+
 from DQNAgent import DQNAgent, MODEL_NAME
 from minesweeper_basic import Minesweeper
 import tensorflow as tf
@@ -20,7 +22,7 @@ if __name__ == "__main__":
 
     for episode in range(0, EPISODES):
         env.reset()
-        current_state, reward, done = env.step((0, 0))
+        current_state, reward, done = env.step(0)
 
         episode_reward = reward
         episode_wins = env.won

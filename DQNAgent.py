@@ -21,6 +21,7 @@ MEMORY_SIZE = 50_000
 
 MODEL_NAME = f'gamma{GAMMA}_lr{LEARNING_RATE}'
 
+
 class DQNAgent(object):
     def __init__(self, environment):
         self.env = environment
@@ -43,7 +44,7 @@ class DQNAgent(object):
         flattened_state = state.flatten()
 
         if self.epsilon > np.random.rand():
-            valid_actions = np.where(flattened_state == 9)[0]
+            valid_actions = np.where(flattened_state == "U")[0]
             return np.random.choice(valid_actions)
         else:
             valid_actions = [0 if x == "B" else 1 for x in flattened_state]
