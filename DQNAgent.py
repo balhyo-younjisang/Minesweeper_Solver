@@ -42,13 +42,14 @@ class DQNAgent(object):
 
     def act(self, state):
         flattened_state = state.flatten()
+        nn_state = self.reshape_state_for_net(state)
 
         if self.epsilon > np.random.rand():
-            valid_actions = np.where(flattened_state == "U")[0]
+            valid_actions = np.where(flattened_state == 'U')[0]
             return np.random.choice(valid_actions)
         else:
-            valid_actions = [0 if x == "B" else 1 for x in flattened_state]
-            q_values = self.model.predict(np.reshape(state, (1, self.env.ROWS, self.env.COLUMNS, 1)))
+            valid_actions = [0 if x == 'U' else 1 for x in flattened_state]
+            q_values = self.model.predict(nn_state)
             valid_qvalues = np.ma.masked_array(q_values, valid_actions)
             return np.argmax(valid_qvalues)
 
@@ -72,6 +73,15 @@ class DQNAgent(object):
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         return loss
+
+    def reshape_state_for_net(self, state):
+        batch_size = 1
+        nn_input = np.zeros((batch_size, self.env.ROWS, self.env.COLUMNS, 9))
+        for tile_num in range(0, 9):
+            idx1, idx2 = np.where(state == tile_num)
+            nn_input[0, idx1, idx2, tile_num] = 1
+
+        return nn_input
 
     def load(self, name):
         self.model.load_weights(name)
